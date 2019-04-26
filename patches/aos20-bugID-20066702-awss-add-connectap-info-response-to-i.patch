@@ -1,0 +1,318 @@
+From 685b0914c66f17c0cc5d73246d90ef949c45740c Mon Sep 17 00:00:00 2001
+From: zhangtian <dongren.zt@alibaba-inc.com>
+Date: Tue, 23 Apr 2019 13:55:15 +0800
+Subject: [PATCH] bugID:20066702:[awss]add connectap info response to improve
+ wifi config
+
+---
+ middleware/linkkit/sdk-c/src/services/awss/awss.c  |   3 +
+ middleware/linkkit/sdk-c/src/services/awss/awss.mk |   2 +-
+ .../linkkit/sdk-c/src/services/awss/awss_cmp.h     |   2 +
+ .../sdk-c/src/services/awss/awss_cmp_coap.c        |   3 +
+ .../linkkit/sdk-c/src/services/awss/awss_info.c    | 173 +++++++++++++++++++++
+ .../linkkit/sdk-c/src/services/awss/awss_info.h    |  24 +++
+ .../linkkit/sdk-c/src/services/awss/awss_notify.c  |   2 +-
+ 7 files changed, 207 insertions(+), 2 deletions(-)
+ create mode 100644 middleware/linkkit/sdk-c/src/services/awss/awss_info.c
+ create mode 100644 middleware/linkkit/sdk-c/src/services/awss/awss_info.h
+
+diff --git a/middleware/linkkit/sdk-c/src/services/awss/awss.c b/middleware/linkkit/sdk-c/src/services/awss/awss.c
+index 1e9780b..2d4f11d 100644
+--- a/middleware/linkkit/sdk-c/src/services/awss/awss.c
++++ b/middleware/linkkit/sdk-c/src/services/awss/awss.c
+@@ -10,6 +10,7 @@
+ #include "awss_cmp.h"
+ #include "awss_notify.h"
+ #include "awss_timer.h"
++#include "awss_info.h"
+ 
+ #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
+ extern "C"
+@@ -87,6 +88,7 @@ int awss_success_notify()
+     awss_cmp_local_init();
+     awss_suc_notify_stop();
+     awss_suc_notify();
++    awss_start_connectap_monitor();
+     return 0;
+ }
+ 
+@@ -187,6 +189,7 @@ int awss_stop()
+     awss_stop_timer(adha_timer);
+     adha_timer = NULL;
+     __awss_stop();
++    awss_stop_connectap_monitor();
+     awss_cmp_local_deinit();
+     awss_stopped = 1;
+     return 0;
+diff --git a/middleware/linkkit/sdk-c/src/services/awss/awss.mk b/middleware/linkkit/sdk-c/src/services/awss/awss.mk
+index d6b1ff4..5abd7c3 100644
+--- a/middleware/linkkit/sdk-c/src/services/awss/awss.mk
++++ b/middleware/linkkit/sdk-c/src/services/awss/awss.mk
+@@ -9,7 +9,7 @@ $(NAME)_SOURCES :=
+ $(NAME)_SOURCES += awss.c           awss_cmp_mqtt.c  awss_report.c   registrar.c   zconfig_protocol.c
+ $(NAME)_SOURCES += awss_packet.c    awss_main.c      awss_wifimgr.c  sha256.c      zconfig_utils.c
+ $(NAME)_SOURCES += awss_cmp_coap.c  awss_notify.c    enrollee.c      passwd.c      zconfig_ieee80211.c  zconfig_vendor_common.c
+-$(NAME)_SOURCES += ntp.c            awss_timer.c
++$(NAME)_SOURCES += ntp.c            awss_timer.c     awss_info.c
+ $(NAME)_SOURCES += os/os_misc.c     utility/log.c
+ 
+ ifeq ($(awss_ble),1)
+diff --git a/middleware/linkkit/sdk-c/src/services/awss/awss_cmp.h b/middleware/linkkit/sdk-c/src/services/awss/awss_cmp.h
+index bafb3b6..bcca2ae 100644
+--- a/middleware/linkkit/sdk-c/src/services/awss/awss_cmp.h
++++ b/middleware/linkkit/sdk-c/src/services/awss/awss_cmp.h
+@@ -36,6 +36,8 @@ extern "C" {
+ #define TOPIC_MATCH_REPORT_REPLY        "/sys/%s/%s/thing/awss/enrollee/match_reply"
+ #define TOPIC_RESET_REPORT              "/sys/%s/%s/thing/reset"
+ #define TOPIC_RESET_REPORT_REPLY        "/sys/%s/%s/thing/reset_reply"
++#define TOPIC_AWSS_GET_CONNECTAP_INFO_MCAST  "/sys/awss/device/connectap/info/get"
++#define TOPIC_AWSS_GET_CONNECTAP_INFO_UCAST  "/sys/%s/%s/awss/device/connectap/info/get"
+ 
+ #define METHOD_DEV_INFO_NOTIFY          "device.info.notify"
+ #define METHOD_AWSS_DEV_INFO_NOTIFY     "awss.device.info.notify"
+diff --git a/middleware/linkkit/sdk-c/src/services/awss/awss_cmp_coap.c b/middleware/linkkit/sdk-c/src/services/awss/awss_cmp_coap.c
+index 8eea72d..d710e44 100644
+--- a/middleware/linkkit/sdk-c/src/services/awss/awss_cmp_coap.c
++++ b/middleware/linkkit/sdk-c/src/services/awss/awss_cmp_coap.c
+@@ -14,6 +14,7 @@
+ #include "awss_wifimgr.h"
+ #include "awss_notify.h"
+ #include "awss_main.h"
++#include "awss_info.h"
+ 
+ #if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
+ extern "C"
+@@ -151,6 +152,8 @@ const struct awss_cmp_couple awss_local_couple[] = {
+     {TOPIC_AWSS_WIFILIST,            wifimgr_process_get_wifilist_request},
+     {TOPIC_AWSS_GETDEVICEINFO_MCAST, wifimgr_process_mcast_get_device_info},
+     {TOPIC_AWSS_GETDEVICEINFO_UCAST, wifimgr_process_ucast_get_device_info},
++    {TOPIC_AWSS_GET_CONNECTAP_INFO_MCAST, awss_process_mcast_get_connectap_info},
++    {TOPIC_AWSS_GET_CONNECTAP_INFO_UCAST, awss_process_ucast_get_connectap_info},
+ #ifndef AWSS_DISABLE_REGISTRAR
+     {TOPIC_NOTIFY,                   online_connectap_monitor},
+ #endif
+diff --git a/middleware/linkkit/sdk-c/src/services/awss/awss_info.c b/middleware/linkkit/sdk-c/src/services/awss/awss_info.c
+new file mode 100644
+index 0000000..fe67a06
+--- /dev/null
++++ b/middleware/linkkit/sdk-c/src/services/awss/awss_info.c
+@@ -0,0 +1,173 @@
++/*
++ * Copyright (C) 2015-2018 Alibaba Group Holding Limited
++ */
++
++#include <stdio.h>
++#include <string.h>
++
++#include "iot_import.h"
++#include "json_parser.h"
++#include "os.h"
++#include "awss_main.h"
++#include "awss_cmp.h"
++#include "awss_info.h"
++#include "awss_notify.h"
++
++#if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
++extern "C"
++{
++#endif
++
++#define DEV_INFO_LEN_MAX                     (512)
++
++enum {
++    AWSS_NOTIFY_DEV_RAND_SIGN,
++    AWSS_NOTIFY_SUCCESS,
++    AWSS_NOTIFY_TYPE_MAX,
++};
++
++#define AWSS_CONNAP_MONITOR_TIMEOUT_MS  (60 * 1000)
++
++static char g_awss_connectap_info_avaliable = 0;
++static void *connectap_monitor_timer = NULL;
++static void *connectap_monitor_mutex = NULL;
++
++static void awss_release_connectap_monitor()
++{
++    if (connectap_monitor_timer) {
++        HAL_Timer_Stop(connectap_monitor_timer);
++        HAL_Timer_Delete(connectap_monitor_timer);
++        connectap_monitor_timer = NULL;
++    }
++    if (connectap_monitor_mutex) {
++        HAL_MutexUnlock(connectap_monitor_mutex);
++        HAL_MutexDestroy(connectap_monitor_mutex);
++        connectap_monitor_mutex = NULL;
++    }
++}
++
++static void awss_connectap_monitor(void *param)
++{
++    if (connectap_monitor_mutex)
++        HAL_MutexLock(connectap_monitor_mutex);
++    g_awss_connectap_info_avaliable = 0;
++    awss_release_connectap_monitor();
++}
++
++int awss_stop_connectap_monitor()
++{
++    awss_connectap_monitor(NULL);
++    return 0;
++}
++
++int awss_start_connectap_monitor()
++{
++    awss_stop_connectap_monitor();
++    
++    if (connectap_monitor_timer) {
++        awss_debug("connap-m exist");
++        return 0;
++    }
++
++    if (connectap_monitor_mutex == NULL) {
++        connectap_monitor_mutex = HAL_MutexCreate();
++        if (connectap_monitor_mutex == NULL) {
++            awss_debug("connap alloc-m fail");
++            goto CONNAP_M_FAIL;
++        }
++    }
++
++    HAL_MutexLock(connectap_monitor_mutex);
++
++    connectap_monitor_timer = HAL_Timer_Create("connap_monitor",
++            awss_connectap_monitor, NULL);
++    if (connectap_monitor_timer == NULL) {
++        awss_debug("connap alloc-t fail");
++        goto CONNAP_M_FAIL;
++    }
++
++    g_awss_connectap_info_avaliable = 1;
++    HAL_Timer_Stop(connectap_monitor_timer);
++    HAL_Timer_Start(connectap_monitor_timer, AWSS_CONNAP_MONITOR_TIMEOUT_MS);
++    HAL_MutexUnlock(connectap_monitor_mutex);
++    return 0;
++
++CONNAP_M_FAIL:
++    awss_release_connectap_monitor();
++    return -1;
++}
++
++
++
++static int process_get_device_info(void *ctx, void *resource, void *remote, void *request, char is_mcast, int type)
++{
++    char *buf = NULL;
++    char *dev_info = NULL;
++    int len = 0, id_len = 0;
++    char *msg = NULL, *id = NULL;
++    const char *topic_fmt = NULL;
++    char topic[TOPIC_LEN_MAX] = {0};
++    char req_msg_id[MSG_REQ_ID_LEN] = {0};
++
++    buf = os_zalloc(DEV_INFO_LEN_MAX);
++    if (!buf)
++        goto DEV_INFO_ERR;
++
++    dev_info = os_zalloc(DEV_INFO_LEN_MAX);
++    if (!dev_info)
++        goto DEV_INFO_ERR;
++
++    msg = awss_cmp_get_coap_payload(request, &len);
++    id = json_get_value_by_name(msg, len, "id", &id_len, 0);
++    if (id && id_len < MSG_REQ_ID_LEN)
++        memcpy(req_msg_id, id, id_len);
++
++    if (type == AWSS_NOTIFY_DEV_RAND_SIGN) {
++        topic_fmt = is_mcast ? TOPIC_AWSS_GETDEVICEINFO_MCAST : TOPIC_AWSS_GETDEVICEINFO_UCAST;
++    } else if (type == AWSS_NOTIFY_SUCCESS) {
++        topic_fmt = is_mcast ? TOPIC_AWSS_GET_CONNECTAP_INFO_MCAST : TOPIC_AWSS_GET_CONNECTAP_INFO_UCAST;
++    } else {
++        goto DEV_INFO_ERR;
++    }
++    awss_build_dev_info(type, buf, DEV_INFO_LEN_MAX);
++    HAL_Snprintf(dev_info, DEV_INFO_LEN_MAX - 1, "{%s}", buf);
++
++    memset(buf, 0x00, DEV_INFO_LEN_MAX);
++    HAL_Snprintf(buf, DEV_INFO_LEN_MAX - 1, AWSS_ACK_FMT, req_msg_id, 200, dev_info);
++
++    os_free(dev_info);
++
++    awss_debug("tx msg to app: %s", buf);
++
++    awss_build_topic(topic_fmt, topic, TOPIC_LEN_MAX);
++
++    if (0 != awss_cmp_coap_send_resp(buf, strlen(buf), remote, topic, request))
++        awss_debug("tx dev info rsp fail.");
++
++    os_free(buf);
++    return 0;
++
++DEV_INFO_ERR:
++    if (buf) os_free(buf);
++    if (dev_info) os_free(dev_info);
++
++    return -1;
++}
++
++int awss_process_mcast_get_connectap_info(void *ctx, void *resource, void *remote, void *request)
++{
++    if (g_awss_connectap_info_avaliable == 0)
++        return -1;
++    return process_get_device_info(ctx, resource, remote, request, 1, AWSS_NOTIFY_SUCCESS);
++}
++
++int awss_process_ucast_get_connectap_info(void *ctx, void *resource, void *remote, void *request)
++{
++    if (g_awss_connectap_info_avaliable == 0)
++        return -1;
++    return process_get_device_info(ctx, resource, remote, request, 0, AWSS_NOTIFY_SUCCESS);
++}
++
++#if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
++}
++#endif
+diff --git a/middleware/linkkit/sdk-c/src/services/awss/awss_info.h b/middleware/linkkit/sdk-c/src/services/awss/awss_info.h
+new file mode 100644
+index 0000000..21ada84
+--- /dev/null
++++ b/middleware/linkkit/sdk-c/src/services/awss/awss_info.h
+@@ -0,0 +1,24 @@
++/*
++ * Copyright (C) 2015-2018 Alibaba Group Holding Limited
++ */
++
++#ifndef __AWSS_INFO_H__
++#define __AWSS_INFO_H__
++
++#include <stdio.h>
++
++#if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
++extern "C"
++{
++#endif
++
++int awss_process_mcast_get_connectap_info(void *ctx, void *resource, void *remote, void *request);
++int awss_process_ucast_get_connectap_info(void *ctx, void *resource, void *remote, void *request);
++
++int awss_stop_connectap_monitor();
++int awss_start_connectap_monitor();
++
++#if defined(__cplusplus)  /* If this is a C++ compiler, use C linkage */
++}
++#endif
++#endif
+diff --git a/middleware/linkkit/sdk-c/src/services/awss/awss_notify.c b/middleware/linkkit/sdk-c/src/services/awss/awss_notify.c
+index 7fd9692..3fa4ca8 100644
+--- a/middleware/linkkit/sdk-c/src/services/awss/awss_notify.c
++++ b/middleware/linkkit/sdk-c/src/services/awss/awss_notify.c
+@@ -74,7 +74,7 @@ extern "C"
+         { AWSS_NOTIFY_DEV_RAND, METHOD_AWSS_DEV_INFO_NOTIFY, TOPIC_AWSS_NOTIFY,
+           awss_devinfo_notify_resp },
+         { AWSS_NOTIFY_SUC, METHOD_AWSS_CONNECTAP_NOTIFY,
+-          TOPIC_AWSS_CONNECTAP_NOTIFY, awss_suc_notify_resp }
++          TOPIC_AWSS_CONNECTAP_NOTIFY, awss_suc_notify_resp }  
+     };
+ 
+     /*
+-- 
+2.7.4
+
