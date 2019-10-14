@@ -25,6 +25,7 @@ SECRET=$2
 SECURITY=$3
 LINKKIT_NAME=linkkit
 LINKKIT_TAG=${LINKKIT_NAME}:v0.1
+PORT=80
 
 yum install epel-release -y
 yum clean all
@@ -51,16 +52,42 @@ do
   fi
 done
 
-docker run -d -p 80:8080 -e accessKeyId="${ACCESSKEY_ID}" -e secret="${SECRET}" -e security=${SECURITY} -v "/var/linkkit:/var/linkkit" linkkit:v0.1
-docker ps
+echo -n "Please confirm if using https(y/n):"
+read
+if [ "${REPLY}" = "y" ];then
+  PORT=443
+  rm -rf /var/linkkit/application-custom.properties
+    mkdir -p /var/linkkit/
+    touch /var/linkkit/application-custom.properties
 
-if [ -f "/var/linkkit/application-custom.properties" ];then
-  echo "config file already exist"
+    echo "Please enter your cert type(default:PKCS12):"
+    read
+    if [ "${REPLY}" = "" ];then
+      echo "server.ssl.keyStoreType=PKCS12" >> /var/linkkit/application-custom.properties
+    else
+      echo "server.ssl.keyStoreType=${REPLY}" >> /var/linkkit/application-custom.properties
+    fi
+
+    echo "Please enter your cert absolute path:"
+    read
+    if [ -f "${REPLY}" ];then
+      echo "server.ssl.key-store=file:${REPLY}" >> /var/linkkit/application-custom.properties
+    else
+      echo "invalid path."
+      exit 1
+    fi
+
+    echo "Please enter your cert passwrod:"
+    read
+    if [ "${REPLY}" != "" ];then
+      echo "server.ssl.key-store-password=${REPLY}" >> /var/linkkit/application-custom.properties
+    else
+      echo "wrong password format"
+    fi
 else
-  echo "creating config file..."
-  mkdir -p /var/linkkit/
-  echo -e "server.port=7001\n"\
-"# server.ssl.key-store=\n"\
-"# server.ssl.key-alias=\n"\
-"# server.ssl.key-store-password=\n" > /var/linkkit/application-custom.properties
+  rm -rf /var/linkkit/application-custom.properties
+  PORT=80
 fi
+
+docker run -d -p ${PORT}:8080 -e accessKeyId="${ACCESSKEY_ID}" -e secret="${SECRET}" -e security=${SECURITY} -v "/var/linkkit:/var/linkkit" linkkit:v0.1
+docker ps
