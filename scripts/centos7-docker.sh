@@ -71,7 +71,8 @@ if [ "${REPLY}" = "y" ];then
   echo -n "Please enter your cert absolute path:"
   read
   if [ -f "${REPLY}" ];then
-    echo "server.ssl.key-store=file:${REPLY}" >> /var/linkkit/application-custom.properties
+    cp -rf ${REPLY} /var/linkkit/server.cert
+    echo "server.ssl.key-store=file:/var/linkkit/server.cert" >> /var/linkkit/application-custom.properties
   else
     echo "invalid path."
     exit 1
