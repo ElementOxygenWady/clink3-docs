@@ -60,7 +60,7 @@ if [ "${REPLY}" = "y" ];then
     mkdir -p /var/linkkit/
     touch /var/linkkit/application-custom.properties
 
-    echo "Please enter your cert type(default:PKCS12):"
+    echo -n "Please enter your cert type(default:PKCS12):"
     read
     if [ "${REPLY}" = "" ];then
       echo "server.ssl.keyStoreType=PKCS12" >> /var/linkkit/application-custom.properties
@@ -68,7 +68,7 @@ if [ "${REPLY}" = "y" ];then
       echo "server.ssl.keyStoreType=${REPLY}" >> /var/linkkit/application-custom.properties
     fi
 
-    echo "Please enter your cert absolute path:"
+    echo -n "Please enter your cert absolute path:"
     read
     if [ -f "${REPLY}" ];then
       echo "server.ssl.key-store=file:${REPLY}" >> /var/linkkit/application-custom.properties
@@ -77,7 +77,7 @@ if [ "${REPLY}" = "y" ];then
       exit 1
     fi
 
-    echo "Please enter your cert passwrod:"
+    echo -n "Please enter your cert passwrod:"
     read
     if [ "${REPLY}" != "" ];then
       echo "server.ssl.key-store-password=${REPLY}" >> /var/linkkit/application-custom.properties
