@@ -51,5 +51,16 @@ do
   fi
 done
 
-docker run -d -p 80:8080 -e accessKeyId="${ACCESSKEY_ID}" -e secret="${SECRET}" -e security=${SECURITY} linkkit:v0.1
+docker run -d -p 80:8080 -e accessKeyId="${ACCESSKEY_ID}" -e secret="${SECRET}" -e security=${SECURITY} -v "/var/linkkit:/var/linkkit" linkkit:v0.1
 docker ps
+
+if [ -f "/var/linkkit/application-custom.properties" ];then
+  echo "config file already exist"
+else
+  echo "creating config file..."
+  mkdir -p /var/linkkit/
+  echo -e "server.port=7001\n"\
+"# server.ssl.key-store=\n"\
+"# server.ssl.key-alias=\n"\
+"# server.ssl.key-store-password=\n" > /var/linkkit/application-custom.properties
+fi
