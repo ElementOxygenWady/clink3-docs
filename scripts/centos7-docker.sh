@@ -9,14 +9,14 @@ help()
   echo -e ""
 }
 
-if [ $UID -ne 0 ];then
-  echo -e "\nSuperuser privileges are required to run this script."
-  echo -e "e.g. \"sudo $0\"\n"
+if [ "$1" = "" -o "$2" = "" -o "$3" == "" ];then
+  help
   exit 1
 fi
 
-if [ "$1" = "" -o "$2" = "" -o "$3" == "" ];then
-  help
+if [ $UID -ne 0 ];then
+  echo -e "\nSuperuser privileges are required to run this script."
+  echo -e "e.g. \"sudo $0\"\n"
   exit 1
 fi
 
@@ -57,33 +57,33 @@ read
 if [ "${REPLY}" = "y" ];then
   PORT=443
   rm -rf /var/linkkit/application-custom.properties
-    mkdir -p /var/linkkit/
-    touch /var/linkkit/application-custom.properties
+  mkdir -p /var/linkkit/
+  touch /var/linkkit/application-custom.properties
 
-    echo -n "Please enter your cert type(default:PKCS12):"
-    read
-    if [ "${REPLY}" = "" ];then
-      echo "server.ssl.keyStoreType=PKCS12" >> /var/linkkit/application-custom.properties
-    else
-      echo "server.ssl.keyStoreType=${REPLY}" >> /var/linkkit/application-custom.properties
-    fi
+  echo -n "Please enter your cert type(default:PKCS12):"
+  read
+  if [ "${REPLY}" = "" ];then
+    echo "server.ssl.keyStoreType=PKCS12" >> /var/linkkit/application-custom.properties
+  else
+    echo "server.ssl.keyStoreType=${REPLY}" >> /var/linkkit/application-custom.properties
+  fi
 
-    echo -n "Please enter your cert absolute path:"
-    read
-    if [ -f "${REPLY}" ];then
-      echo "server.ssl.key-store=file:${REPLY}" >> /var/linkkit/application-custom.properties
-    else
-      echo "invalid path."
-      exit 1
-    fi
+  echo -n "Please enter your cert absolute path:"
+  read
+  if [ -f "${REPLY}" ];then
+    echo "server.ssl.key-store=file:${REPLY}" >> /var/linkkit/application-custom.properties
+  else
+    echo "invalid path."
+    exit 1
+  fi
 
-    echo -n "Please enter your cert passwrod:"
-    read
-    if [ "${REPLY}" != "" ];then
-      echo "server.ssl.key-store-password=${REPLY}" >> /var/linkkit/application-custom.properties
-    else
-      echo "wrong password format"
-    fi
+  echo -n "Please enter your cert passwrod:"
+  read
+  if [ "${REPLY}" != "" ];then
+    echo "server.ssl.key-store-password=${REPLY}" >> /var/linkkit/application-custom.properties
+  else
+    echo "wrong password format"
+  fi
 else
   rm -rf /var/linkkit/application-custom.properties
   PORT=80
