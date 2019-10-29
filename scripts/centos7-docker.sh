@@ -36,9 +36,6 @@ systemctl start docker
 
 docker info
 
-docker pull registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.1
-docker tag registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.1 ${LINKKIT_TAG}
-
 CONTAINERS=`docker ps | sed -n '1d;p'`
 echo -e "${CONTAINERS}" | while read LINE
 do
@@ -51,6 +48,9 @@ do
     docker stop ${CONTAINER_ID}
   fi
 done
+
+docker pull registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.1
+docker tag registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.1 ${LINKKIT_TAG}
 
 echo -n "Please confirm if using https(y/n):"
 read
