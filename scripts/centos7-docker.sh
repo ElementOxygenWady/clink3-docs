@@ -24,7 +24,8 @@ ACCESSKEY_ID=$1
 SECRET=$2
 SECURITY=$3
 LINKKIT_NAME=linkkit
-LINKKIT_TAG=${LINKKIT_NAME}:v0.1
+LINKKIT_DOCKER=registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.2
+LINKKIT_TAG=${LINKKIT_NAME}:v0.2
 PORT=80
 
 yum install epel-release -y
@@ -49,8 +50,8 @@ do
   fi
 done
 
-docker pull registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.1
-docker tag registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.1 ${LINKKIT_TAG}
+docker pull ${LINKKIT_DOCKER}
+docker tag ${LINKKIT_DOCKER} ${LINKKIT_TAG}
 
 echo -n "Please confirm if using https(y/n):"
 read
