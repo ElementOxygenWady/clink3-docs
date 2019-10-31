@@ -91,5 +91,5 @@ else
   PORT=80
 fi
 
-docker run -d -p ${PORT}:8080 -e accessKeyId="${ACCESSKEY_ID}" -e secret="${SECRET}" -e security=${SECURITY} -v "/var/linkkit:/var/linkkit" linkkit:v0.1
+docker run -d -p ${PORT}:8080 -e accessKeyId="${ACCESSKEY_ID}" -e secret="${SECRET}" -e security=${SECURITY} -v "/var/linkkit:/var/linkkit" ${LINKKIT_TAG}
 docker ps
