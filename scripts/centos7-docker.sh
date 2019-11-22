@@ -24,8 +24,9 @@ ACCESSKEY_ID=$1
 SECRET=$2
 SECURITY=$3
 LINKKIT_NAME=linkkit
-LINKKIT_DOCKER=registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:v0.2
-LINKKIT_TAG=${LINKKIT_NAME}:v0.2
+LINKKIT_VERSION=v0.21
+LINKKIT_DOCKER=registry.cn-shanghai.aliyuncs.com/linkkitteam/linkkit:${LINKKIT_VERSION}
+LINKKIT_TAG=${LINKKIT_NAME}:${LINKKIT_VERSION}
 PORT=80
 
 yum install epel-release -y
