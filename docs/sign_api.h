@@ -1,6 +1,10 @@
 #ifndef __SIGN_H__
 #define __SIGN_H__
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #define IOTX_PRODUCT_KEY_LEN            (20)
@@ -40,6 +44,10 @@ typedef struct {
 } iotx_sign_mqtt_t;
 
 int32_t IOT_Sign_MQTT(iotx_mqtt_region_types_t region, iotx_dev_meta_info_t *meta, iotx_sign_mqtt_t *signout);
+
+#if defined(__cplusplus)
+}
+#endif
 
 #endif  /* #ifndef __SIGN_H__ */
 

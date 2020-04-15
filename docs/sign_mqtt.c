@@ -125,11 +125,11 @@ int _iotx_generate_sign_string(const char *device_id, const char *device_name, c
 {
     char signsource[DEV_SIGN_SOURCE_MAXLEN] = {0};
     uint16_t signsource_len = 0;
-    const char sign_fmt[] = "clientId%sdeviceName%sproductKey%stimestamp%s";
+    const char *sign_fmt = "clientId%sdeviceName%sproductKey%stimestamp%s";
     uint8_t sign_hex[32] = {0};
 
-    signsource_len = sizeof(sign_fmt) + strlen(device_id) + strlen(device_name) + strlen(product_key) + strlen(
-                                 TIMESTAMP_VALUE);
+    signsource_len = (uint16_t)(strlen(sign_fmt) + strlen(device_id) + strlen(device_name) + strlen(product_key) + strlen(
+                                 TIMESTAMP_VALUE));
     if (signsource_len >= DEV_SIGN_SOURCE_MAXLEN) {
         return -1;
     }
